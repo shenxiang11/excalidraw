@@ -7,6 +7,8 @@ import {
 import { EVENT, MIME_TYPES } from "../constants";
 import { AbortError } from "../errors";
 import { debounce } from "../utils";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeFile, writeTextFile } from "@tauri-apps/plugin-fs";
 
 type FILE_EXTENSION = Exclude<keyof typeof MIME_TYPES, "binary">;
 
@@ -87,6 +89,23 @@ export const fileSave = (
     fileHandle?: FileSystemHandle | null;
   },
 ) => {
+  if (!nativeFileSystemSupported) {
+    return new Promise(async (resove, reject) => {
+      try {
+        const filename = await save({
+          defaultPath: `${opts.name}.${opts.extension}`,
+        });
+
+        const data = await blob;
+        const buffer = await data.arrayBuffer();
+        const ret = await writeFile(filename ?? `file-${Date.now()}`, new Uint8Array(buffer));
+        resove(ret);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   return _fileSave(
     blob,
     {
